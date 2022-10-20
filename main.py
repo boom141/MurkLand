@@ -6,7 +6,7 @@ pygame.init()
 # imported python files ------------------------------------------#
 from map_loader import*
 from caching.tile_set import*
-from caching.grass import*
+from caching.animation import*
 from entity import*
 from grass_module import grass
 
@@ -55,7 +55,6 @@ gm.enable_ground_shadows(shadow_radius=4, shadow_color=(0, 0, 1), shadow_shift=(
 
 player = Player([game_data.map_data.spawn_point[0][0],game_data.map_data.spawn_point[0][1]-30])
 
-
 # game loop --------------------------------------------------------------#
 while 1:
 # framerate independence -------------------------------------------------#
@@ -79,14 +78,16 @@ while 1:
 	player.update(delta_time,game_data)
 	player.draw(display,game_data.scroll)
 	
-
-	gm.apply_force((player.rect.centerx , player.rect.centery ), 10 , 15)
+	gm.apply_force((player.rect.centerx , player.rect.centery ), 8 , 10)
 	rot_function = lambda x, y: int(math.sin(game_data.master_time / 60 + x / 80) * 10)
 	gm.update_render(display, delta_time, offset=game_data.scroll, rot_function=rot_function)
 	for data in game_data.grass_loc:	
-		gm.place_tile((int((data.x + game_data.scroll[0])) // TILE_SIZE, int((data.y - 1 + game_data.scroll[1])) // TILE_SIZE), 4, [0, 1, 2, 3, 5])
+		gm.place_tile((int((data.x + game_data.scroll[0])) // TILE_SIZE, int((data.y - 1 + game_data.scroll[1])) // TILE_SIZE), 3, [0, 1, 2, 3, 5])
 
 	game_data.master_time += delta_time
+
+	
+	
 
 	for event in pygame.event.get(): # event loop
 		if event.type == QUIT:
