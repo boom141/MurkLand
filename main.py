@@ -87,7 +87,6 @@ while 1:
 	game_data.master_time += delta_time
 
 	
-	
 
 	for event in pygame.event.get(): # event loop
 		if event.type == QUIT:
