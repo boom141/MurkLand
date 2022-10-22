@@ -8,6 +8,7 @@ from map_loader import*
 from caching.tile_set import*
 from caching.animation import*
 from entity import*
+from light_mask import*
 from grass_module import grass
 
 
@@ -20,7 +21,7 @@ last_time = time.time()
 # Setup window ---------------------------------------------------#
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SCREEN_SIZE,0,32)
-display = pygame.Surface((150,150))
+display = pygame.Surface((170,170))
 pygame.display.set_caption('MurkLand')
 
 
@@ -35,7 +36,10 @@ class Game_Data:
 		self.tile_map = {}
 		self.grass_loc = []
 		self.grass_tiles = ['0.png','1.png','2.png']
+		self.avoid = [[0,1],['third-tile-set','decoration']]
 		self.master_time = 0
+		self.light_orbs = []
+		self.light_masks = []
 
 	def render_map(self,surface):
 		self.tile_rects = []
@@ -43,7 +47,7 @@ class Game_Data:
 		for data in sorted(self.map_data.tile_map):
 			image_id = data[2].split('.')
 			surface.blit(self.tile_set.tile_asset[data[1]][int(image_id[0])],(data[3] - self.scroll[0],data[4] - self.scroll[1]))
-			if data[0] != 0 and data[1] != 'third-tile-set':
+			if data[0] not in self.avoid[0] and data[1] not in self.avoid[1]:
 				self.tile_rects.append(pygame.Rect(data[3],data[4],TILE_SIZE,TILE_SIZE))
 			if data[1] == 'first-tile-set' and data[2] in self.grass_tiles:
 				self.grass_loc.append(pygame.Rect(data[3] - self.scroll[0], data[4] - self.scroll[1], TILE_SIZE,TILE_SIZE))
@@ -54,6 +58,10 @@ gm = grass.GrassManager('./assets/grass', tile_size=TILE_SIZE, stiffness=600, ma
 gm.enable_ground_shadows(shadow_radius=4, shadow_color=(0, 0, 1), shadow_shift=(1, 2))
 
 player = Player([game_data.map_data.spawn_point[0][0],game_data.map_data.spawn_point[0][1]-30])
+for data in game_data.map_data.light_orb:
+	game_data.light_orbs.append(Light_Orb([data[0],data[1]]))
+
+light_mask = Light_Mask()
 
 # game loop --------------------------------------------------------------#
 while 1:
@@ -72,12 +80,21 @@ while 1:
 	game_data.scroll[0] = int(game_data.true_scroll[0])
 	game_data.scroll[1] = int(game_data.true_scroll[1])
 
+# map edges --------------------------------------------------------------#
+	if game_data.scroll[0] < 855:
+		game_data.scroll[0] = 855
+	if game_data.scroll[0] > 1454:
+		game_data.scroll[0] = 1454
+	if game_data.scroll[1] < 676:
+		game_data.scroll[1] = 676
+
 # rendering ---------------------------------------------------------------#
 	game_data.render_map(display)
 
 	player.update(delta_time,game_data)
 	player.draw(display,game_data.scroll)
 	
+
 	gm.apply_force((player.rect.centerx , player.rect.centery ), 8 , 10)
 	rot_function = lambda x, y: int(math.sin(game_data.master_time / 60 + x / 80) * 10)
 	gm.update_render(display, delta_time, offset=game_data.scroll, rot_function=rot_function)
@@ -87,6 +104,13 @@ while 1:
 	game_data.master_time += delta_time
 
 	
+	
+	for orb in game_data.light_orbs:
+		orb.update()
+		orb.render(display,game_data.scroll,delta_time)
+	
+		light_mask.render(display,[player.rect.centerx - game_data.scroll[0],player.rect.centery - game_data.scroll[1]],delta_time)
+
 
 	for event in pygame.event.get(): # event loop
 		if event.type == QUIT:

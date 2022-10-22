@@ -1,8 +1,8 @@
-from tkinter import CENTER
-import pygame
+import pygame, random, math
 from pygame.locals import*
 
 from caching.animation import*
+from light_mask import*
 
 class Player:
 	def __init__(self,location):
@@ -95,6 +95,7 @@ class Player:
 		if self.horizontal_momentum < 0:
 			self.horizontal_momentum = 0
 
+		
 		collisions = self.move(player_move,game_data.tile_rects)
 
 		if collisions['bottom']:
@@ -116,3 +117,61 @@ class Player:
 	def draw(self,surface,scroll):
 		# image_scale = pygame.transform.scale(self.image,(17,33)).convert()
 		surface.blit(self.image2,(self.image2_rect.x - scroll[0], self.image2_rect.y - scroll[1]))
+
+
+class Light_Orb(pygame.sprite.Sprite):
+	def __init__(self,location):
+		self.location = location
+		self.particles = []
+		self.particles_glow = []
+		self.hit_box = pygame.Rect(location[0],location[1],50,50)
+
+	def orb_glow(self,radius,color):
+		surf = pygame.Surface((radius * 2, radius * 2))
+		pygame.draw.circle(surf, color, (radius, radius), radius)
+		surf.set_colorkey((0, 0, 0))
+		return surf
+	def update(self):
+		self.particles.append([[self.location[0], self.location[1]], [0,0], 4])
+
+		r = 10 * math.sqrt(random.randint(1,2))
+		theta = random.random() * 2 * math.pi
+		x = self.location[0] + r * math.cos(theta)
+		y = self.location[1] + r * math.sin(theta)
+		distance_x = self.location[0] - int(x) 
+		distance_y = self.location[1]- int(y)
+		direction_x = math.cos(math.atan2(distance_y,distance_x)) 
+		direction_y = math.sin(math.atan2(distance_y,distance_x))
+
+		self.particles_glow.append([[x, y], [direction_x,direction_y], 5])
+	
+	def render(self,surface,scroll,delta_time):
+
+		for particle in self.particles:
+			particle[0][0] += particle[1][0]
+			particle[0][1] += particle[1][1]
+			particle[2] -= 0.3
+			particle[1][1] += 0
+			pygame.draw.circle(surface, (255, 255, 255), [int(particle[0][0]) - scroll[0], int(particle[0][1]) - scroll[1]], int(particle[2]))
+
+			radius = particle[2] * 2
+			
+			surface.blit(self.orb_glow(radius, (20, 20, 50)), (int(particle[0][0] - radius) - scroll[0], int(particle[0][1] - radius) - scroll[1]), special_flags=BLEND_RGB_ADD)
+			if particle[2] <= 0:
+				self.particles.remove(particle)
+
+
+		for glow in self.particles_glow:
+			glow[0][0] += glow[1][0] * delta_time
+			glow[0][1] += glow[1][1] * delta_time
+			glow[2] -= 0.3
+			glow[1][1] += 0
+			pygame.draw.circle(surface, (255, 255, 255), [int(glow[0][0]) - scroll[0], int(glow[0][1]) - scroll[1]], int(particle[2]))
+
+			radius = particle[2] * 2
+			
+			surface.blit(self.orb_glow(radius, (20, 20, 50)), (int(glow[0][0] - radius) - scroll[0], int(glow[0][1] - radius) - scroll[1]), special_flags=BLEND_RGB_ADD)
+			if glow[2] <= 0:
+				self.particles_glow.remove(glow)
+
+		#pygame.draw.rect(surface, 'green',  (self.hit_box.x - 10 - scroll[0], self.hit_box.y - 10 - scroll[1],20,20), 1)
