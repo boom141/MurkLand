@@ -8,7 +8,7 @@ from map_loader import*
 from caching.tile_set import*
 from caching.animation import*
 from entity import*
-from light_mask import*
+# from light_mask import*
 from grass_module import grass
 
 
@@ -22,6 +22,7 @@ last_time = time.time()
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SCREEN_SIZE,0,32)
 display = pygame.Surface((170,170))
+light_surf = display.copy()
 pygame.display.set_caption('MurkLand')
 
 
@@ -39,7 +40,9 @@ class Game_Data:
 		self.avoid = [[0,1],['third-tile-set','decoration']]
 		self.master_time = 0
 		self.light_orbs = []
-		self.light_masks = []
+		self.light_images = []
+		self.frame_count = 0
+		self.shrink = True
 
 	def render_map(self,surface):
 		self.tile_rects = []
@@ -63,6 +66,28 @@ for data in game_data.map_data.light_orb:
 
 light_mask = Light_Mask()
 
+light_mask_image = pygame.image.load('./assets/light_mask/light.png')
+for i in range(100,150):
+	game_data.light_images.append(pygame.transform.scale(light_mask_image,(i,i)))
+
+def glow(surface,radius,delta_time):
+	if game_data.shrink:
+		game_data.frame_count += 0.1 * delta_time
+	else:
+		game_data.frame_count -= 0.1 * delta_time
+			
+	if game_data.frame_count >= (len(game_data.light_images)): 
+		game_data.frame_count = len(game_data.light_images) - 1
+		game_data.shrink = False
+	if game_data.frame_count <= 1:
+		game_data.frame_count = 1
+		game_data.shrink = True
+		
+	image = game_data.light_images[int(game_data.frame_count)]
+	surface.blit(image,(radius[0]-int(image.get_width()/2),
+	radius[1]-int(image.get_height()/2)),special_flags=BLEND_RGBA_ADD) 
+
+
 # game loop --------------------------------------------------------------#
 while 1:
 # framerate independence -------------------------------------------------#
@@ -72,7 +97,7 @@ while 1:
 
 # fill the screen --------------------------------------------------------#  
 	display.fill((25,25,25))
-
+	light_surf.fill((0,0,0))
 # camera -----------------------------------------------------------------#
 	game_data.true_scroll[0] += (player.rect.centerx - display.get_width() // 2 - game_data.true_scroll[0]) / 5
 	game_data.true_scroll[1] += (player.rect.centery - display.get_height() // 2 - game_data.true_scroll[1]) / 5
@@ -102,15 +127,17 @@ while 1:
 		gm.place_tile((int((data.x + game_data.scroll[0])) // TILE_SIZE, int((data.y - 1 + game_data.scroll[1])) // TILE_SIZE), 3, [0, 1, 2, 3, 5])
 
 	game_data.master_time += delta_time
-
-	
 	
 	for orb in game_data.light_orbs:
 		orb.update()
 		orb.render(display,game_data.scroll,delta_time)
 	
-		light_mask.render(display,[player.rect.centerx - game_data.scroll[0],player.rect.centery - game_data.scroll[1]],delta_time)
+	for data in game_data.map_data.light_orb:
+		glow(light_surf,[data[0] - game_data.scroll[0],data[1] - game_data.scroll[1]],delta_time)
+	
+	glow(light_surf,[player.rect.centerx - game_data.scroll[0],player.rect.centery - game_data.scroll[1]],delta_time)
 
+	display.blit(light_surf,(0,0),special_flags=BLEND_RGB_MULT)
 
 	for event in pygame.event.get(): # event loop
 		if event.type == QUIT:
