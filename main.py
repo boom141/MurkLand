@@ -8,7 +8,7 @@ from map_loader import*
 from caching.tile_set import*
 from caching.animation import*
 from entity import*
-# from light_mask import*
+from fireflies import*
 from grass_module import grass
 
 
@@ -41,8 +41,10 @@ class Game_Data:
 		self.master_time = 0
 		self.light_orbs = []
 		self.light_images = []
+		self.firefly_light = []
 		self.frame_count = 0
 		self.shrink = True
+		self.fireflies = pygame.sprite.Group()
 
 	def render_map(self,surface):
 		self.tile_rects = []
@@ -69,21 +71,34 @@ light_mask = Light_Mask()
 light_mask_image = pygame.image.load('./assets/light_mask/light.png')
 for i in range(100,150):
 	game_data.light_images.append(pygame.transform.scale(light_mask_image,(i,i)))
+for i in range(50,80):
+	game_data.firefly_light.append(pygame.transform.scale(light_mask_image,(i,i)))
 
-def glow(surface,radius,delta_time):
+def glow(surface,radius,delta_time,enitity):
 	if game_data.shrink:
-		game_data.frame_count += 0.1 * delta_time
+		game_data.frame_count += 0.0245 * delta_time
 	else:
-		game_data.frame_count -= 0.1 * delta_time
-			
-	if game_data.frame_count >= (len(game_data.light_images)): 
-		game_data.frame_count = len(game_data.light_images) - 1
-		game_data.shrink = False
-	if game_data.frame_count <= 1:
-		game_data.frame_count = 1
-		game_data.shrink = True
+		game_data.frame_count -= 0.0245 * delta_time
+
+	if enitity == 0:		
+		if game_data.frame_count >= (len(game_data.light_images)): 
+			game_data.frame_count = len(game_data.light_images) - 1
+			game_data.shrink = False
+		if game_data.frame_count <= 1:
+			game_data.frame_count = 1
+			game_data.shrink = True
 		
-	image = game_data.light_images[int(game_data.frame_count)]
+		image = game_data.light_images[int(game_data.frame_count)]
+	else:
+		if game_data.frame_count >= (len(game_data.firefly_light)): 
+			game_data.frame_count = len(game_data.firefly_light) - 1
+			game_data.shrink = False
+		if game_data.frame_count <= 1:
+			game_data.frame_count = 1
+			game_data.shrink = True
+		
+		image = game_data.firefly_light[int(game_data.frame_count)]
+
 	surface.blit(image,(radius[0]-int(image.get_width()/2),
 	radius[1]-int(image.get_height()/2)),special_flags=BLEND_RGBA_ADD) 
 
@@ -133,9 +148,29 @@ while 1:
 		orb.render(display,game_data.scroll,delta_time)
 	
 	for data in game_data.map_data.light_orb:
-		glow(light_surf,[data[0] - game_data.scroll[0],data[1] - game_data.scroll[1]],delta_time)
+		glow(light_surf,[data[0] - game_data.scroll[0],data[1] - game_data.scroll[1]],delta_time,0)
 	
-	glow(light_surf,[player.rect.centerx - game_data.scroll[0],player.rect.centery - game_data.scroll[1]],delta_time)
+	glow(light_surf,[player.rect.centerx - game_data.scroll[0],player.rect.centery - game_data.scroll[1]],delta_time,0)
+
+	
+	r = 180 * math.sqrt(random.randint(1,2))
+	theta = random.random() * 2 * math.pi
+	x = player.rect.centerx + r * math.cos(theta)
+	y = player.rect.centery + r * math.sin(theta)
+	distance_x = player.rect.centerx - int(x) 
+	distance_y = player.rect.centery - int(y)
+	direction_x = math.cos(math.atan2(distance_y,distance_x)) 
+	direction_y = math.sin(math.atan2(distance_y,distance_x))
+
+	
+	if len(game_data.fireflies) <= 20:
+		game_data.fireflies.add(Fireflies([x,y]))
+
+
+	for firefly in game_data.fireflies:
+		firefly.render(display,delta_time,[direction_x,direction_y],game_data.scroll)
+		glow(light_surf,[firefly.position[0] - game_data.scroll[0],firefly.position[1] - game_data.scroll[1]],delta_time,1)
+
 
 	display.blit(light_surf,(0,0),special_flags=BLEND_RGB_MULT)
 
