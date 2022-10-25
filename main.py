@@ -80,9 +80,9 @@ for i in range(50,80):
 
 def glow(surface,radius,delta_time,enitity):
 	if game_data.shrink:
-		game_data.frame_count += 0.0245 * delta_time
+		game_data.frame_count += 0.0211 * delta_time
 	else:
-		game_data.frame_count -= 0.0245 * delta_time
+		game_data.frame_count -= 0.0211 * delta_time
 
 	if enitity == 0:		
 		if game_data.frame_count >= (len(game_data.light_images)): 
