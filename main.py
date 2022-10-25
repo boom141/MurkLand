@@ -1,10 +1,12 @@
 # Setup pygame ---------------------------------------------------#
+from pydoc import locate
 import pygame,os,time,sys,random,math
 from pygame.locals import *
 pygame.init()
 
 # imported python files ------------------------------------------#
 from map_loader import*
+from effects_particles import*
 from caching.tile_set import*
 from caching.animation import*
 from entity import*
@@ -39,12 +41,14 @@ class Game_Data:
 		self.grass_tiles = ['0.png','1.png','2.png']
 		self.avoid = [[0,1],['third-tile-set','decoration']]
 		self.master_time = 0
-		self.light_orbs = []
 		self.light_images = []
 		self.firefly_light = []
 		self.frame_count = 0
 		self.shrink = True
+		self.light_orbs = pygame.sprite.Group()
 		self.fireflies = pygame.sprite.Group()
+		self.particles = pygame.sprite.Group()
+		self.effects = pygame.sprite.Group()
 
 	def render_map(self,surface):
 		self.tile_rects = []
@@ -64,7 +68,7 @@ gm.enable_ground_shadows(shadow_radius=4, shadow_color=(0, 0, 1), shadow_shift=(
 
 player = Player([game_data.map_data.spawn_point[0][0],game_data.map_data.spawn_point[0][1]-30])
 for data in game_data.map_data.light_orb:
-	game_data.light_orbs.append(Light_Orb([data[0],data[1]]))
+	game_data.light_orbs.add(Light_Orb([data[0],data[1]]))
 
 light_mask = Light_Mask()
 
@@ -110,7 +114,8 @@ while 1:
 	delta_time *= 60
 	last_time = time.time()
 
-# fill the screen --------------------------------------------------------#  
+# fill the screen --------------------------------------------------------# 
+	screen.fill((25,25,25))
 	display.fill((25,25,25))
 	light_surf.fill((0,0,0))
 # camera -----------------------------------------------------------------#
@@ -133,7 +138,6 @@ while 1:
 
 	player.update(delta_time,game_data)
 	player.draw(display,game_data.scroll)
-	
 
 	gm.apply_force((player.rect.centerx , player.rect.centery ), 8 , 10)
 	rot_function = lambda x, y: int(math.sin(game_data.master_time / 60 + x / 80) * 10)
@@ -145,15 +149,15 @@ while 1:
 	
 	for orb in game_data.light_orbs:
 		orb.update()
+		orb.collision(player.image2_rect,game_data)
 		orb.render(display,game_data.scroll,delta_time)
+		glow(light_surf,[orb.location[0] - game_data.scroll[0],orb.location[1] - game_data.scroll[1]],delta_time,0)
 	
-	for data in game_data.map_data.light_orb:
-		glow(light_surf,[data[0] - game_data.scroll[0],data[1] - game_data.scroll[1]],delta_time,0)
 	
 	glow(light_surf,[player.rect.centerx - game_data.scroll[0],player.rect.centery - game_data.scroll[1]],delta_time,0)
 
 	
-	r = 180 * math.sqrt(random.randint(1,2))
+	r = 170 * math.sqrt(random.randint(1,2))
 	theta = random.random() * 2 * math.pi
 	x = player.rect.centerx + r * math.cos(theta)
 	y = player.rect.centery + r * math.sin(theta)
@@ -163,13 +167,20 @@ while 1:
 	direction_y = math.sin(math.atan2(distance_y,distance_x))
 
 	
-	if len(game_data.fireflies) <= 20:
+	if len(game_data.fireflies) <= 30:
 		game_data.fireflies.add(Fireflies([x,y]))
 
 
 	for firefly in game_data.fireflies:
 		firefly.render(display,delta_time,[direction_x,direction_y],game_data.scroll)
 		glow(light_surf,[firefly.position[0] - game_data.scroll[0],firefly.position[1] - game_data.scroll[1]],delta_time,1)
+
+
+	for particle in game_data.particles:
+		particle.render(display,game_data.scroll,delta_time)
+	
+	for effect in game_data.effects:
+		effect.render(display,game_data.scroll,delta_time)
 
 
 	display.blit(light_surf,(0,0),special_flags=BLEND_RGB_MULT)

@@ -1,6 +1,7 @@
 import pygame, random, math
 from pygame.locals import*
 
+from effects_particles import*
 from caching.animation import*
 from light_mask import*
 
@@ -9,6 +10,7 @@ class Player:
 		self.animation = Animation('./assets/animation')
 		self.image = pygame.image.load('assets/animation/player_idle/0.png')
 		self.rect = self.image.get_rect(x=location[0],y=location[1])
+		self.image2_rect = None
 		self.wall_jump = False
 		self.free_fall = 0
 		self.vertical_momentum = 0
@@ -16,6 +18,7 @@ class Player:
 		self.frame_count = 0
 		self.state = 'idle'
 		self.flip = False
+		self.jump_cooldown = 0
 
 	def collision(self,tile_rects):
 		hit_list = []
@@ -44,7 +47,13 @@ class Player:
 				collision_types['bottom'] = True
 			elif player_move[1]  < 0:
 				self.rect.top = tile.bottom
-		
+
+# player edge ---------------------------------------------------------------------#
+		if self.rect.x >= 1610:
+			self.rect.x = 1610
+		if self.rect.x <= 855:
+			self.rect.x = 855
+
 		return collision_types
 
 	def change_state(self,delta_time):
@@ -63,6 +72,8 @@ class Player:
 
 	def update(self,delta_time,game_data):
 		player_move = [0,0]
+		if self.jump_cooldown > 0:
+			self.jump_cooldown -= 1
 		if pygame.key.get_pressed()[K_d]:
 			player_move[0] += 2.5 * delta_time
 			self.flip = False
@@ -71,8 +82,17 @@ class Player:
 			self.flip = True
 		if pygame.key.get_pressed()[K_SPACE]:
 			if self.free_fall < 6:
+				if self.jump_cooldown == 0:
+					pulse = Pulse_Ease_Out([self.rect.centerx , self.rect.centery + 8 ],[5,1,20],((255,255,255)),True)
+					game_data.effects.add(pulse)
+					self.jump_cooldown = 15
 				self.vertical_momentum = -3
+
 			elif self.free_fall > 6 and self.wall_jump:
+				if self.jump_cooldown == 0:
+					pulse = Pulse_Ease_Out([self.rect.centerx , self.rect.centery + 8 ],[5,1,20],((255,255,255)),True)
+					game_data.effects.add(pulse)
+					self.jump_cooldown = 15
 				self.vertical_momentum = -4 
 				self.horizontal_momentum = 5 if self.flip else -6
 
@@ -115,16 +135,48 @@ class Player:
 		self.image2_rect = self.image2.get_rect(center=(self.rect.centerx,self.rect.centery))
 
 	def draw(self,surface,scroll):
-		# image_scale = pygame.transform.scale(self.image,(17,33)).convert()
 		surface.blit(self.image2,(self.image2_rect.x - scroll[0], self.image2_rect.y - scroll[1]))
-
+		#pygame.draw.rect(surface, 'green', (self.rect.x - scroll[0], self.rect.y - scroll[1],self.image2.get_width(),self.image2.get_height()), 1)
 
 class Light_Orb(pygame.sprite.Sprite):
 	def __init__(self,location):
+		pygame.sprite.Sprite.__init__(self)
 		self.location = location
 		self.particles = []
 		self.particles_glow = []
-		self.hit_box = pygame.Rect(location[0],location[1],50,50)
+		self.hit_box = pygame.Rect(location[0],location[1],10,10)
+
+	def collision(self,player,game_data):
+		if player.colliderect(self.hit_box):
+			for i in range(50):
+				r = 10 * math.sqrt(random.randint(1,2))
+				theta = random.random() * 2 * math.pi
+				x = self.location[0] + r * math.cos(theta)
+				y = self.location[1] + r * math.sin(theta)
+				distance_x = self.location[0] - int(x) 
+				distance_y = self.location[1]- int(y)
+				direction_x = math.cos(math.atan2(distance_y,distance_x)) 
+				direction_y = math.sin(math.atan2(distance_y,distance_x))
+
+				scatter = Static_Particle([x,y],[direction_x,direction_y],
+				[4,0,0.1,0,(255,255,255)],[0,game_data.tile_map,16],True)
+				game_data.particles.add(scatter)
+	
+			for i in range(50):
+				r = 10 * math.sqrt(random.randint(1,2))
+				theta = random.random() * 2 * math.pi
+				x = self.location[0] + r * math.cos(theta)
+				y = self.location[1] + r * math.sin(theta)
+				distance_x = self.location[0] - int(x) 
+				distance_y = self.location[1]- int(y)
+				direction_x = math.cos(math.atan2(distance_y,distance_x)) 
+				direction_y = math.sin(math.atan2(distance_y,distance_x))
+
+				scatter = Static_Particle([self.location[0],self.location[1]],[direction_x,direction_y],
+				[4,0,0.1,0,(255,255,255)],[0,game_data.tile_map,16],True)
+				game_data.particles.add(scatter)
+
+			self.kill()
 
 	def orb_glow(self,radius,color):
 		surf = pygame.Surface((radius * 2, radius * 2))
@@ -148,8 +200,8 @@ class Light_Orb(pygame.sprite.Sprite):
 	def render(self,surface,scroll,delta_time):
 
 		for particle in self.particles:
-			particle[0][0] += particle[1][0]
-			particle[0][1] += particle[1][1]
+			particle[0][0] += particle[1][0] * delta_time
+			particle[0][1] += particle[1][1] * delta_time
 			particle[2] -= 0.3
 			particle[1][1] += 0
 			pygame.draw.circle(surface, (255, 255, 255), [int(particle[0][0]) - scroll[0], int(particle[0][1]) - scroll[1]], int(particle[2]))
@@ -159,7 +211,6 @@ class Light_Orb(pygame.sprite.Sprite):
 			surface.blit(self.orb_glow(radius, (20, 20, 50)), (int(particle[0][0] - radius) - scroll[0], int(particle[0][1] - radius) - scroll[1]), special_flags=BLEND_RGB_ADD)
 			if particle[2] <= 0:
 				self.particles.remove(particle)
-
 
 		for glow in self.particles_glow:
 			glow[0][0] += glow[1][0] * delta_time
