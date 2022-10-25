@@ -148,6 +148,8 @@ class Light_Orb(pygame.sprite.Sprite):
 
 	def collision(self,player,game_data):
 		if player.colliderect(self.hit_box):
+			pulse1 = Pulse_Ease_Out([self.location[0],self.location[1]],[3,4,60],((255,255,255)),True)
+			game_data.effects.add(pulse1)
 			for i in range(50):
 				r = 10 * math.sqrt(random.randint(1,2))
 				theta = random.random() * 2 * math.pi
