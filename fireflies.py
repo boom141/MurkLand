@@ -1,4 +1,4 @@
-import pygame, random
+import pygame, random, noise
 from pygame.locals import*
 
 
@@ -17,12 +17,14 @@ class Fireflies(pygame.sprite.Sprite):
 	def render(self,surface,dt,direction,scroll):
 		# direction = [random.randint(0, 20) / 10 - 1, random.randrange(-1,1)]
 		
-		if random.randint(0,1) == 0:
-			direction[0] *= random.randint(-2,2)
-		self.position[0] += direction[0] * dt
-		if random.randint(0,1) == 0:
+		path = noise.pnoise2(self.position[0] / 3,self.position[1] /3, octaves=2) * 3
+
+		if path < 0:
+			direction[0] *= random.randint(-3,3)
+		self.position[0] += direction[0] *dt
+		if path > 0:
 			direction[1] *= random.randint(-2,2)
-		self.position[1] += direction[1] * dt
+		self.position[1] += direction[1] *dt
 
 		glow_radius = self.radius * 2
 		pygame.draw.circle(surface, 'yellow', [self.position[0] - scroll[0], self.position[1] - scroll[1]], self.radius)

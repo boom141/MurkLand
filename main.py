@@ -1,5 +1,5 @@
 # Setup pygame ---------------------------------------------------#
-from pydoc import locate
+from pickletools import dis
 import pygame,os,time,sys,random,math
 from pygame.locals import *
 pygame.init()
@@ -7,6 +7,7 @@ pygame.init()
 # imported python files ------------------------------------------#
 from map_loader import*
 from effects_particles import*
+from backdrop import*
 from caching.tile_set import*
 from caching.animation import*
 from entity import*
@@ -25,6 +26,7 @@ clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SCREEN_SIZE,0,32)
 display = pygame.Surface((170,170))
 light_surf = display.copy()
+bg_light_surf = screen.copy()
 pygame.display.set_caption('MurkLand')
 
 
@@ -43,12 +45,14 @@ class Game_Data:
 		self.master_time = 0
 		self.light_images = []
 		self.firefly_light = []
+		self.bg_images = []
 		self.frame_count = 0
 		self.shrink = True
 		self.light_orbs = pygame.sprite.Group()
 		self.fireflies = pygame.sprite.Group()
 		self.particles = pygame.sprite.Group()
 		self.effects = pygame.sprite.Group()
+		self.backdrop = pygame.sprite.Group()
 
 	def render_map(self,surface):
 		self.tile_rects = []
@@ -78,13 +82,14 @@ for i in range(100,150):
 for i in range(50,80):
 	game_data.firefly_light.append(pygame.transform.scale(light_mask_image,(i,i)))
 
-def glow(surface,radius,delta_time,enitity):
-	if game_data.shrink:
-		game_data.frame_count += 0.0211 * delta_time
-	else:
-		game_data.frame_count -= 0.0211 * delta_time
 
-	if enitity == 0:		
+def glow(surface,radius,delta_time,entity):
+	if game_data.shrink:
+		game_data.frame_count += 0.0111 * delta_time
+	else:
+		game_data.frame_count -= 0.0111 * delta_time
+
+	if entity == 0:		
 		if game_data.frame_count >= (len(game_data.light_images)): 
 			game_data.frame_count = len(game_data.light_images) - 1
 			game_data.shrink = False
@@ -93,6 +98,7 @@ def glow(surface,radius,delta_time,enitity):
 			game_data.shrink = True
 		
 		image = game_data.light_images[int(game_data.frame_count)]
+
 	else:
 		if game_data.frame_count >= (len(game_data.firefly_light)): 
 			game_data.frame_count = len(game_data.firefly_light) - 1
@@ -118,6 +124,7 @@ while 1:
 	screen.fill((25,25,25))
 	display.fill((25,25,25))
 	light_surf.fill((0,0,0))
+
 # camera -----------------------------------------------------------------#
 	game_data.true_scroll[0] += (player.rect.centerx - display.get_width() // 2 - game_data.true_scroll[0]) / 5
 	game_data.true_scroll[1] += (player.rect.centery - display.get_height() // 2 - game_data.true_scroll[1]) / 5
@@ -181,7 +188,6 @@ while 1:
 	
 	for effect in game_data.effects:
 		effect.render(display,game_data.scroll,delta_time)
-
 
 	display.blit(light_surf,(0,0),special_flags=BLEND_RGB_MULT)
 

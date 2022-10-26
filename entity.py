@@ -1,9 +1,11 @@
 import pygame, random, math
 from pygame.locals import*
+pygame.mixer.pre_init(44100, -16, 2, 512)
 
 from effects_particles import*
 from caching.animation import*
 from light_mask import*
+from sound_music import*
 
 class Player:
 	def __init__(self,location):
@@ -18,6 +20,7 @@ class Player:
 		self.frame_count = 0
 		self.state = 'idle'
 		self.flip = False
+		self.landing =  False
 		self.jump_cooldown = 0
 
 	def collision(self,tile_rects):
@@ -83,6 +86,7 @@ class Player:
 		if pygame.key.get_pressed()[K_SPACE]:
 			if self.free_fall < 6:
 				if self.jump_cooldown == 0:
+					Sfx_Sound('sfx/jump2.wav').play_sound(loop=0,volume=1)
 					pulse = Pulse_Ease_Out([self.rect.centerx , self.rect.centery + 8 ],[5,1,20],((255,255,255)),True)
 					game_data.effects.add(pulse)
 					self.jump_cooldown = 15
@@ -90,6 +94,7 @@ class Player:
 
 			elif self.free_fall > 6 and self.wall_jump:
 				if self.jump_cooldown == 0:
+					Sfx_Sound('sfx/jump2.wav').play_sound(loop=0,volume=1)
 					pulse = Pulse_Ease_Out([self.rect.centerx , self.rect.centery + 8 ],[5,1,20],((255,255,255)),True)
 					game_data.effects.add(pulse)
 					self.jump_cooldown = 15
@@ -102,7 +107,6 @@ class Player:
 			self.state = 'jump'
 		elif player_move[0] > 0 or player_move[0] < 0:
 			self.state = 'run'
-	
 	
 # player gravity -------------------------------------------------------#
 		
@@ -124,6 +128,14 @@ class Player:
 			self.horizontal_momentum = 0
 		else:
 			self.free_fall += 1
+
+		if self.free_fall > 6:  
+			self.landing = True
+		
+
+		if self.landing and self.free_fall < 6:
+			# Sfx_Sound('sfx/land1.wav').play_sound(loop=0,volume=1)
+			self.landing = False
 
 		if collisions['left'] or collisions['right']:
 			self.wall_jump = True
