@@ -1,6 +1,5 @@
 import pygame, random, math
 from pygame.locals import*
-pygame.mixer.pre_init(44100, -16, 2, 512)
 
 from effects_particles import*
 from caching.animation import*
@@ -21,7 +20,9 @@ class Player:
 		self.state = 'idle'
 		self.flip = False
 		self.landing =  False
-		self.jump_cooldown = 0
+		self.sound_cooldown = 0
+		self.sound_player = [] 
+		self.player_light = 150
 
 	def collision(self,tile_rects):
 		hit_list = []
@@ -75,29 +76,35 @@ class Player:
 
 	def update(self,delta_time,game_data):
 		player_move = [0,0]
-		if self.jump_cooldown > 0:
-			self.jump_cooldown -= 1
+		if self.sound_cooldown > 0:
+			self.sound_cooldown -= 1
 		if pygame.key.get_pressed()[K_d]:
+			if self.sound_cooldown == 0 and self.state != 'jump':
+				self.sound_player.append(Sfx_Sound('sfx/footstep1.wav'))
+				self.sound_cooldown = 20
 			player_move[0] += 2.5 * delta_time
 			self.flip = False
 		if pygame.key.get_pressed()[K_a]:
+			if self.sound_cooldown == 0 and self.state != 'jump':
+				self.sound_player.append(Sfx_Sound('sfx/footstep1.wav'))
+				self.sound_cooldown = 20
 			player_move[0] -= 2.5 * delta_time
 			self.flip = True
 		if pygame.key.get_pressed()[K_SPACE]:
 			if self.free_fall < 6:
-				if self.jump_cooldown == 0:
-					Sfx_Sound('sfx/jump2.wav').play_sound(loop=0,volume=1)
+				if self.sound_cooldown == 0:
+					self.sound_player.append(Sfx_Sound('sfx/jump2.wav'))
 					pulse = Pulse_Ease_Out([self.rect.centerx , self.rect.centery + 8 ],[5,1,20],((255,255,255)),True)
 					game_data.effects.add(pulse)
-					self.jump_cooldown = 15
+					self.sound_cooldown = 20
 				self.vertical_momentum = -3
 
 			elif self.free_fall > 6 and self.wall_jump:
-				if self.jump_cooldown == 0:
-					Sfx_Sound('sfx/jump2.wav').play_sound(loop=0,volume=1)
+				if self.sound_cooldown == 0:
+					self.sound_player.append(Sfx_Sound('sfx/jump2.wav'))
 					pulse = Pulse_Ease_Out([self.rect.centerx , self.rect.centery + 8 ],[5,1,20],((255,255,255)),True)
 					game_data.effects.add(pulse)
-					self.jump_cooldown = 15
+					self.sound_cooldown = 20
 				self.vertical_momentum = -4 
 				self.horizontal_momentum = 5 if self.flip else -6
 
@@ -108,6 +115,10 @@ class Player:
 		elif player_move[0] > 0 or player_move[0] < 0:
 			self.state = 'run'
 	
+		for sound in self.sound_player:
+			sound.play_sound(loop=0,volume=0.2)
+			self.sound_player.remove(sound)
+
 # player gravity -------------------------------------------------------#
 		
 		player_move[1] += self.vertical_momentum * delta_time
@@ -134,7 +145,9 @@ class Player:
 		
 
 		if self.landing and self.free_fall < 6:
-			# Sfx_Sound('sfx/land1.wav').play_sound(loop=0,volume=1)
+			if self.sound_cooldown == 0:
+				self.sound_player.append(Sfx_Sound('sfx/land0.wav'))
+				self.sound_cooldown = 20
 			self.landing = False
 
 		if collisions['left'] or collisions['right']:
@@ -158,8 +171,9 @@ class Light_Orb(pygame.sprite.Sprite):
 		self.particles_glow = []
 		self.hit_box = pygame.Rect(location[0],location[1],10,10)
 
-	def collision(self,player,game_data):
-		if player.colliderect(self.hit_box):
+	def collision(self,player,player_status,game_data):
+		if player.image2_rect.colliderect(self.hit_box):
+			Sfx_Sound('sfx/collect2.wav').play_sound(loop=0,volume=0.4)
 			pulse1 = Pulse_Ease_Out([self.location[0],self.location[1]],[3,4,60],((255,255,255)),True)
 			game_data.effects.add(pulse1)
 			for i in range(50):
@@ -190,6 +204,8 @@ class Light_Orb(pygame.sprite.Sprite):
 				[4,0,0.1,0,(255,255,255)],[0,game_data.tile_map,16],True)
 				game_data.particles.add(scatter)
 
+			player.player_light += 30
+			player_status.collected_orb += 1
 			self.kill()
 
 	def orb_glow(self,radius,color):
