@@ -14,9 +14,7 @@ class Fireflies(pygame.sprite.Sprite):
 		surf.set_colorkey((0, 0, 0))
 		return surf
 
-	def render(self,surface,dt,direction,scroll):
-		# direction = [random.randint(0, 20) / 10 - 1, random.randrange(-1,1)]
-		
+	def render(self,surface,dt,direction,scroll):		
 		path = noise.pnoise2(self.position[0] / 3,self.position[1] /3, octaves=2) * 3
 
 		if path < 0:

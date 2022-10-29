@@ -22,7 +22,7 @@ class Player:
 		self.landing =  False
 		self.sound_cooldown = 0
 		self.sound_player = [] 
-		self.player_light = 150
+		self.player_light = 130
 
 	def collision(self,tile_rects):
 		hit_list = []
@@ -53,8 +53,8 @@ class Player:
 				self.rect.top = tile.bottom
 
 # player edge ---------------------------------------------------------------------#
-		if self.rect.x >= 1610:
-			self.rect.x = 1610
+		if self.rect.x >= 1702:
+			self.rect.x = 1702
 		if self.rect.x <= 855:
 			self.rect.x = 855
 
@@ -116,7 +116,7 @@ class Player:
 			self.state = 'run'
 	
 		for sound in self.sound_player:
-			sound.play_sound(loop=0,volume=0.2)
+			sound.play_sound(loop=0,volume=0.3)
 			self.sound_player.remove(sound)
 
 # player gravity -------------------------------------------------------#
@@ -173,7 +173,7 @@ class Light_Orb(pygame.sprite.Sprite):
 
 	def collision(self,player,player_status,game_data):
 		if player.image2_rect.colliderect(self.hit_box):
-			Sfx_Sound('sfx/collect2.wav').play_sound(loop=0,volume=0.4)
+			Sfx_Sound('sfx/collect2.wav').play_sound(loop=0,volume=0.5)
 			pulse1 = Pulse_Ease_Out([self.location[0],self.location[1]],[3,4,60],((255,255,255)),True)
 			game_data.effects.add(pulse1)
 			for i in range(50):
@@ -213,8 +213,8 @@ class Light_Orb(pygame.sprite.Sprite):
 		pygame.draw.circle(surf, color, (radius, radius), radius)
 		surf.set_colorkey((0, 0, 0))
 		return surf
-	def update(self):
-		self.particles.append([[self.location[0], self.location[1]], [0,0], 4])
+	
+	def render(self,surface,scroll,delta_time):
 
 		r = 10 * math.sqrt(random.randint(1,2))
 		theta = random.random() * 2 * math.pi
@@ -225,31 +225,16 @@ class Light_Orb(pygame.sprite.Sprite):
 		direction_x = math.cos(math.atan2(distance_y,distance_x)) 
 		direction_y = math.sin(math.atan2(distance_y,distance_x))
 
-		self.particles_glow.append([[x, y], [direction_x,direction_y], 5])
-	
-	def render(self,surface,scroll,delta_time):
-
-		for particle in self.particles:
-			particle[0][0] += particle[1][0] * delta_time
-			particle[0][1] += particle[1][1] * delta_time
-			particle[2] -= 0.3
-			particle[1][1] += 0
-			pygame.draw.circle(surface, (255, 255, 255), [int(particle[0][0]) - scroll[0], int(particle[0][1]) - scroll[1]], int(particle[2]))
-
-			radius = particle[2] * 2
-			
-			surface.blit(self.orb_glow(radius, (20, 20, 50)), (int(particle[0][0] - radius) - scroll[0], int(particle[0][1] - radius) - scroll[1]), special_flags=BLEND_RGB_ADD)
-			if particle[2] <= 0:
-				self.particles.remove(particle)
+		self.particles_glow.append([[self.location[0], self.location[1]], [direction_x,direction_y], 5])
 
 		for glow in self.particles_glow:
 			glow[0][0] += glow[1][0] * delta_time
 			glow[0][1] += glow[1][1] * delta_time
 			glow[2] -= 0.3
 			glow[1][1] += 0
-			pygame.draw.circle(surface, (255, 255, 255), [int(glow[0][0]) - scroll[0], int(glow[0][1]) - scroll[1]], int(particle[2]))
+			pygame.draw.circle(surface, (255, 255, 255), [int(glow[0][0]) - scroll[0], int(glow[0][1]) - scroll[1]], int(glow[2]))
 
-			radius = particle[2] * 2
+			radius = glow[2] * 2
 			
 			surface.blit(self.orb_glow(radius, (20, 20, 50)), (int(glow[0][0] - radius) - scroll[0], int(glow[0][1] - radius) - scroll[1]), special_flags=BLEND_RGB_ADD)
 			if glow[2] <= 0:

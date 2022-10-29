@@ -5,6 +5,7 @@ pygame.init()
 
 # imported python files ------------------------------------------#
 from map_loader import*
+from main_menu import*
 from effects_particles import*
 from backdrop import*
 from misc import*
@@ -28,6 +29,8 @@ screen = pygame.display.set_mode(SCREEN_SIZE,0,32)
 display = pygame.Surface((170,170))
 light_surf = display.copy()
 bg_light_surf = screen.copy()
+main_menu = screen.copy()
+menu_surf = screen.copy()
 pygame.display.set_caption('MurkLand')
 
 
@@ -40,6 +43,7 @@ class Game_Data:
 		self.scroll = [0,0]
 		self.tile_rects = []
 		self.tile_map = {}
+		self.foliage = []
 		self.grass_loc = []
 		self.grass_tiles = ['0.png','1.png','2.png']
 		self.avoid = [[0,1],['third-tile-set','decoration']]
@@ -74,8 +78,16 @@ game_data = Game_Data()
 gm = grass.GrassManager('./assets/grass', tile_size=TILE_SIZE, stiffness=600, max_unique=5, place_range=[1, 1])
 gm.enable_ground_shadows(shadow_radius=4, shadow_color=(0, 0, 1), shadow_shift=(1, 2))
 
-player = Player([game_data.map_data.spawn_point[0][0],game_data.map_data.spawn_point[0][1]-30])
+player = Player([game_data.map_data.spawn_point[0][0],game_data.map_data.spawn_point[0][1] - 10])
 player_status = Player_Status()
+
+for data in game_data.map_data.foliage:
+	flip_id = data[2].split('.')
+	if int(flip_id[0]) > 2:
+		flip = True
+	else:
+		flip = False
+	game_data.foliage.append(Foliage_Animation('./assets/crown',[data[3],data[4]],flip))
 
 for data in game_data.map_data.light_orb:
 	game_data.light_orbs.add(Light_Orb([data[0],data[1]]))
@@ -86,6 +98,8 @@ light_mask_image = pygame.image.load('./assets/light_mask/light.png')
 for i in range(50,80):
 	game_data.firefly_light.append(pygame.transform.scale(light_mask_image,(i,i)))
 
+menu = Main_Menu()
+home, switch_range = True, True
 
 def glow(surface,radius,delta_time,entity):
 	if game_data.shrink:
@@ -118,7 +132,9 @@ def glow(surface,radius,delta_time,entity):
 
 
 # game loop --------------------------------------------------------------#
-while 1:
+	
+
+while 1:	
 # framerate independence -------------------------------------------------#
 	delta_time = time.time() - last_time
 	delta_time *= 60
@@ -128,7 +144,8 @@ while 1:
 	screen.fill((25,25,25))
 	display.fill((25,25,25))
 	light_surf.fill((0,0,0))
-
+	main_menu.fill((25,25,25))
+	main_menu.set_colorkey((25,25,25))
 
 # camera -----------------------------------------------------------------#
 	game_data.true_scroll[0] += (player.rect.centerx - display.get_width() // 2 - game_data.true_scroll[0]) / 5
@@ -140,18 +157,26 @@ while 1:
 # map edges --------------------------------------------------------------#
 	if game_data.scroll[0] < 855:
 		game_data.scroll[0] = 855
-	if game_data.scroll[0] > 1454:
-		game_data.scroll[0] = 1454
+	if game_data.scroll[0] > 1543:
+		game_data.scroll[0] = 1543
 	if game_data.scroll[1] < 676:
 		game_data.scroll[1] = 676
 
 # rendering ---------------------------------------------------------------#
 
+	for tile in game_data.map_data.outer_tiles:
+		image_id = tile[2].split('.')
+		display.blit(game_data.tile_set.tile_asset[tile[1]][int(image_id[0])],(tile[3] - game_data.scroll[0], tile[4] - game_data.scroll[1]))
 
+	for tree in game_data.foliage:
+		tree.render(display,game_data.scroll,delta_time)
+	
 	game_data.render_map(display)
 
+	
 	player.update(delta_time,game_data)
-	player.draw(display,game_data.scroll)
+	if home == False:	
+		player.draw(display,game_data.scroll)
 
 	game_data.light_images = []
 	for i in range(player.player_light - 50,player.player_light):
@@ -166,7 +191,6 @@ while 1:
 	game_data.master_time += delta_time
 	
 	for orb in game_data.light_orbs:
-		orb.update()
 		orb.collision(player,player_status,game_data)
 		orb.render(display,game_data.scroll,delta_time)
 		glow(light_surf,[orb.location[0] - game_data.scroll[0],orb.location[1] - game_data.scroll[1]],delta_time,0)
@@ -174,8 +198,15 @@ while 1:
 	
 	glow(light_surf,[player.rect.centerx - game_data.scroll[0],player.rect.centery - game_data.scroll[1]],delta_time,0)
 
-	
-	r = 170 * math.sqrt(random.randint(1,2))
+	if home:
+		range_value = 100
+	else:
+		if switch_range:
+			game_data.fireflies.empty()
+		range_value = 170
+		switch_range = False
+
+	r = range_value * math.sqrt(random.randint(1,2))
 	theta = random.random() * 2 * math.pi
 	x = player.rect.centerx + r * math.cos(theta)
 	y = player.rect.centery + r * math.sin(theta)
@@ -184,9 +215,10 @@ while 1:
 	direction_x = math.cos(math.atan2(distance_y,distance_x)) 
 	direction_y = math.sin(math.atan2(distance_y,distance_x))
 
-	
+
 	if len(game_data.fireflies) <= 30:
 		game_data.fireflies.add(Fireflies([x,y]))
+
 
 
 	for firefly in game_data.fireflies:
@@ -204,13 +236,29 @@ while 1:
 
 
 	screen.blit(pygame.transform.scale(display,SCREEN_SIZE),(0,0))
-	player_status.render(screen)
+
+	if home == False:
+		player_status.render(screen)
+	
+	if pygame.mouse.get_pressed()[0]:
+		home = False
+		pygame.mouse.set_visible(False)
+
+	if home == True:
+		menu.render_text(main_menu,"Caryl's",'Minecraft.ttf',60,'white',[80,120])
+		menu.render_text(main_menu,"MurkLand",'Minecraft.ttf',60,'white',[80,190])
+		menu.render_text(main_menu,"'Click' To Start",'Minecraft.ttf',20,'white',[170,400])
 
 	for event in pygame.event.get(): # event loop
 		if event.type == QUIT:
 			pygame.quit()
 			sys.exit()
-		
 
+		if event.type == pygame.KEYDOWN:
+			if event.key == pygame.K_ESCAPE:
+				pygame.quit()
+				sys.exit()
+		
+	screen.blit(main_menu,(0,0))
 	pygame.display.update()
 	clock.tick(FPS)

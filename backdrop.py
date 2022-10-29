@@ -14,7 +14,7 @@ class Bubble_Bg(pygame.sprite.Sprite):
 		surf.set_colorkey((0, 0, 0))
 		return surf
 
-	def render(self,surface,dt,direction):
+	def render(self,dt,direction):
 		# if self.alive:
 		# 	self.timer -= 0.5
 		# 	if self.timer <= 0:
